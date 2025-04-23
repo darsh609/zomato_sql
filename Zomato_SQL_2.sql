@@ -97,10 +97,117 @@ on a.userid = b.userid and created_date <= gold_signup_date) c)
 b
 where rnk=1
  
-
-
-
-
  
+ 
+ -- what is the total order and amount spent for each member before 
+ -- they became a member
+ select userid,count(created_date) order_purchased,sum(price) total_amt_spent from
+ (select c.*,d.price from
+ (select a.userid,a.created_date,a.product_id,b.gold_signup_date from sales a
+ inner join goldusers_signup b on a.userid=b.userid and created_date<=gold_signup_date) 
+ c inner join product d on c.product_id=d.product_id) e
+ group by userid
+
+
+
+
+ -- If buying each product generates points for eg 5rs=2 zomato point and each product has different purchasing points
+-- for eg for p1 5rs=1 zomato point , for p2 10rs=5zomato point and p3 5rs=1 zomato point 2rs=1zomato point
+
+-- calculate points collected by each customer and for which product most points have been given till now.
+
+select userid, sum(total_points)*2.5 total_money_earned from 
+(
+    select e.*, amt/points total_points from 
+    (
+        select d.*, case when product_id=1 then 5 when product_id=2 then 2 when product_id=3 then 5 else 0 end as points from 
+        (
+            select c.userid, c.product_id, sum(price) amt from 
+            (
+                select a.*, b.price from sales a 
+                inner join product b on a.product_id=b.product_id
+            ) c 
+            group by userid, product_id
+        ) d 
+    ) e 
+) f 
+group by userid;
+
+
+
+
+select * from
+(SELECT *, RANK() OVER (ORDER BY total_money_earned DESC) rnk 
+FROM (
+    SELECT product_id, SUM(total_points) AS total_money_earned 
+    FROM (
+        SELECT e.*, amt / points AS total_points 
+        FROM (
+            SELECT d.*, 
+                   CASE 
+                       WHEN product_id = 1 THEN 5 
+                       WHEN product_id = 2 THEN 2 
+                       WHEN product_id = 3 THEN 5 
+                       ELSE 0 
+                   END AS points 
+            FROM (
+                SELECT c.userid, c.product_id, SUM(price) AS amt 
+                FROM (
+                    SELECT a.*, b.price 
+                    FROM sales a 
+                    INNER JOIN product b ON a.product_id = b.product_id
+                ) c 
+                GROUP BY userid, product_id
+            ) d 
+        ) e 
+    ) f 
+    GROUP BY product_id
+) final)g where rnk=1;
+
+
+
+-- In the first one year after a customer joins the gold program (including their join date),
+-- irrespective of what the customer has purchased, they earn 5 zomato points for every 10 rs spent.
+-- Who earned more: 1 or 3, and what was their points earnings in their first year?
+
+-- 1 zp = 2 rs
+-- 0.5 zp = 1 rs
+
+SELECT c.*, d.price * 0.5 AS total_points_earned  
+FROM (
+    SELECT a.userid, a.created_date, a.product_id, b.gold_signup_date  
+    FROM sales a  
+    INNER JOIN goldusers_signup b  
+        ON a.userid = b.userid  
+       AND a.created_date >= b.gold_signup_date  
+       AND a.created_date <= DATE_ADD(b.gold_signup_date, INTERVAL 1 YEAR)
+) AS c  
+INNER JOIN product d  
+    ON c.product_id = d.product_id;
+
+-- rank all the transaction of the customer
+select * , rank() over(partition by userid order by created_date) rnk from sales
+
+-- rank all the transactions for each member whenever they are a zomato gold member for every 
+-- non gold member for every non gold member transaction mark as na 
+
+SELECT e.*,  
+       CASE WHEN rnk = 0 THEN 'na' ELSE rnk END AS rnkk  
+FROM (
+    SELECT c.*,  
+           CAST(
+               CASE  
+                   WHEN gold_signup_date IS NULL THEN 0  
+                   ELSE RANK() OVER (PARTITION BY userid ORDER BY created_date DESC)  
+               END AS CHAR(5)  -- or use VARCHAR(10) if needed
+           ) AS rnk  
+    FROM (
+        SELECT a.userid, a.created_date, a.product_id, b.gold_signup_date  
+        FROM sales a  
+        LEFT JOIN goldusers_signup b  
+            ON a.userid = b.userid  
+           AND a.created_date > b.gold_signup_date
+    ) c
+) e;
 
 
