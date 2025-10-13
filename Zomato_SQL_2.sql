@@ -220,17 +220,45 @@ FROM (
 -- 1 zp = 2 rs
 -- 0.5 zp = 1 rs
 
-SELECT c.*, d.price * 0.5 AS total_points_earned  
+-- SELECT c.*, d.price * 0.5 AS total_points_earned  
+-- FROM (
+--     SELECT a.userid, a.created_date, a.product_id, b.gold_signup_date  
+--     FROM sales a  
+--     INNER JOIN goldusers_signup b  
+--         ON a.userid = b.userid  
+--        AND a.created_date >= b.gold_signup_date  
+--        AND a.created_date <= DATE_ADD(b.gold_signup_date, INTERVAL 1 YEAR)
+-- ) AS c  
+-- INNER JOIN product d  
+--     ON c.product_id = d.product_id;
+-- In the first one year after a customer joins the gold program (including their join date),
+-- irrespective of what the customer has purchased, they earn 5 zomato points for every 10 rs spent.
+-- Who earned more: 1 or 3, and what was their points earnings in their first year?
+
+SELECT 
+    userid,
+    SUM(price * 0.5) AS total_points_earned
 FROM (
-    SELECT a.userid, a.created_date, a.product_id, b.gold_signup_date  
-    FROM sales a  
-    INNER JOIN goldusers_signup b  
-        ON a.userid = b.userid  
-       AND a.created_date >= b.gold_signup_date  
-       AND a.created_date <= DATE_ADD(b.gold_signup_date, INTERVAL 1 YEAR)
-) AS c  
-INNER JOIN product d  
-    ON c.product_id = d.product_id;
+    SELECT 
+        a.userid,
+        a.created_date,
+        a.product_id,
+        b.gold_signup_date
+    FROM sales a
+    INNER JOIN goldusers_signup b
+        ON a.userid = b.userid
+        AND a.created_date >= b.gold_signup_date
+        AND a.created_date <= DATE_ADD(b.gold_signup_date, INTERVAL 1 YEAR)
+) AS c
+INNER JOIN product d
+    ON c.product_id = d.product_id
+GROUP BY userid
+HAVING userid IN (1, 3)
+ORDER BY total_points_earned DESC;
+
+
+
+
 
 -- rank all the transaction of the customer
 select * , rank() over(partition by userid order by created_date) rnk from sales
