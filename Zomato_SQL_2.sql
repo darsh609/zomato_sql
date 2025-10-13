@@ -58,22 +58,69 @@ group by a.userid
 select userid,count(distinct created_date) distinct_days from sales group by userid
 
 -- what was the first product purchased by each customer
-select * from(
-select * ,rank() over(partition by userid order by created_date) rnk from sales) a
-where rnk=1;
+-- select * from(
+-- select * ,rank() over(partition by userid order by created_date) rnk from sales) a
+-- where rnk=1;
+       WITH ranked_sales AS (
+    SELECT *,
+           RANK() OVER(PARTITION BY userId ORDER BY created_date) AS rnk
+    FROM sales
+)
+SELECT *
+FROM ranked_sales
+WHERE rnk = 1;
+
+
+
 
 -- WHAT IS THE MOST PUCHASED ITEM ON THE MENU AND HOW MANY TIMES IT WAS PURCHASED
 select userid,count(userid) num from sales where product_id=(
 select product_id from sales group by product_id order by count(product_id) desc limit 1) group by userid order by  num desc 
 
 
+
+       
+
+
 -- WHICH ITEM WAS THE MOST OPULAR FOR EACH CUSTOMER
-select * from
-(select * ,rank() over(partition by userid order by cnt 
-desc) rnk from
-(select userid,product_id,count(product_id) cnt from sales
-group by userid,product_id) as b) as c
-where rnk=1
+-- select * from
+-- (select * ,rank() over(partition by userid order by cnt 
+-- desc) rnk from
+-- (select userid,product_id,count(product_id) cnt from sales
+-- group by userid,product_id) as b) as c
+-- where rnk=1
+WITH product_counts AS (
+    SELECT userId, product_id, COUNT(product_id) AS cnt
+    FROM sales
+    GROUP BY userId, product_id
+),
+ranked_products AS (
+    SELECT *,
+           RANK() OVER(PARTITION BY userId ORDER BY cnt DESC) AS rnk
+    FROM product_counts
+)
+SELECT *
+FROM ranked_products
+WHERE rnk = 1;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+       
+
+       
 
 -- which item was first purchased by customer after they became a member
 select * from
