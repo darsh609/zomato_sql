@@ -108,20 +108,6 @@ WHERE rnk = 1;
 
 
 
-
-
-
-
-
-
-
-
-
-
-       
-
-       
-
 -- which item was first purchased by customer after they became a member
 select * from
 (select * ,rank() over (partition by userid order by created_date)
@@ -131,6 +117,25 @@ from sales a join goldusers_signup b
 on a.userid = b.userid and created_date >= gold_signup_date) c)
 b
 where rnk=1
+
+       WITH joined AS (
+  SELECT a.userid,
+         a.created_date,
+         a.product_id,
+         b.gold_signup_date
+  FROM sales a
+  JOIN goldusers_signup b
+    ON a.userid = b.userid
+   AND a.created_date >= b.gold_signup_date
+),
+ranked AS (
+  SELECT j.*,
+         RANK() OVER (PARTITION BY userid ORDER BY created_date) AS rnk
+  FROM joined j
+)
+SELECT userid, created_date, product_id, gold_signup_date
+FROM ranked
+WHERE rnk = 1;
 
 
 
