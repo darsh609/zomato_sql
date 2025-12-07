@@ -161,6 +161,34 @@ where rnk=1
  group by userid
 
 
+       WITH joined_sales AS (
+  SELECT s.userid,
+         s.created_date,
+         s.product_id,
+         g.gold_signup_date
+  FROM sales     s
+  INNER JOIN goldusers_signup g
+    ON s.userid = g.userid
+   AND s.created_date <= g.gold_signup_date
+),
+sales_with_price AS (
+  SELECT j.userid,
+         j.created_date,
+         j.product_id,
+         j.gold_signup_date,
+         p.price
+  FROM joined_sales j
+  INNER JOIN product p
+    ON j.product_id = p.product_id
+)
+SELECT userid,
+       COUNT(created_date)    AS order_purchased,
+       SUM(price)             AS total_amt_spent
+FROM sales_with_price
+GROUP BY userid;
+
+
+
 
 
  -- If buying each product generates points for eg 5rs=2 zomato point and each product has different purchasing points
