@@ -213,6 +213,39 @@ select userid, sum(total_points)*2.5 total_money_earned from
 ) f 
 group by userid;
 
+WITH sales_price AS (
+  SELECT s.*, p.price
+  FROM sales s
+  JOIN product p ON s.product_id = p.product_id
+),
+amt_per_user_product AS (
+  SELECT userid,
+         product_id,
+         SUM(price) AS amt
+  FROM sales_price
+  GROUP BY userid, product_id
+),
+points_assigned AS (
+  SELECT *,
+         CASE 
+           WHEN product_id = 1 THEN 5
+           WHEN product_id = 2 THEN 2
+           WHEN product_id = 3 THEN 5
+           ELSE 0
+         END AS points
+  FROM amt_per_user_product
+),
+points_calc AS (
+  SELECT userid,
+         -- NULLIF avoids division by zero; cast to numeric to preserve decimals
+         (amt::numeric / NULLIF(points,0)) AS total_points_per_prod
+  FROM points_assigned
+)
+SELECT userid,
+       SUM(total_points_per_prod) * 2.5 AS total_money_earned
+FROM points_calc
+GROUP BY userid;
+
 
 
 
